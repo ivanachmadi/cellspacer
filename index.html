@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102d32" />
+    <meta name="description" content="A shared production counting board for MLA and EMA cell spacer benches." />
+    <title>Cell spacer · Production board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Cell spacer production board home">
+          <span class="brand-mark"><span></span><span></span><span></span></span>
+          <span class="brand-name">CELL<span>SPACER</span></span>
+        </a>
+        <div class="topbar-right">
+          <div class="sync-state" id="syncState" role="status" aria-live="polite">
+            <span class="sync-dot"></span><span id="syncLabel">Saved on this device</span>
+          </div>
+          <div class="presence-control" id="presenceControl">
+            <button class="presence-button" id="presenceButton" type="button" aria-expanded="false" aria-controls="presencePopover" title="Connected devices">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3" width="10" height="13.5" rx="1.6"/><path d="M5.5 6h4M6 13.5h3M15 7.5h2.5v9H12.5"/><circle cx="15" cy="4.5" r="1.5"/></svg>
+              <span id="presenceCount">0</span><small>live</small>
+            </button>
+            <section class="presence-popover" id="presencePopover" aria-label="Devices connected to the shared board">
+              <div class="popover-heading"><strong>Connected devices</strong><span id="presencePopoverCount">0</span></div>
+              <ul id="presenceList"><li class="presence-empty">Connect the shared board to see devices.</li></ul>
+              <p>Devices currently connected to this board</p>
+            </section>
+          </div>
+          <button class="activity-button" id="activityButton" type="button" title="Activity history" aria-label="Open activity history" aria-expanded="false" aria-controls="activitySidebar">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 5v5l3.2 2M17 10a7 7 0 1 1-2.05-4.95M17 4v4h-4" /></svg>
+            <span>History</span>
+          </button>
+          <button class="button share-button" id="shareButton" type="button" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 10v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6" /></svg>
+            Share
+          </button>
+          <button class="icon-button help-button" id="connectButton" type="button" title="Connect shared board" aria-label="Connect shared board">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v.01M12 13.5c0-1.7 2.3-1.8 2.3-3.8a2.3 2.3 0 0 0-4.6 0M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-line"></span> PRODUCTION FLOOR</p>
+            <h1>Counting board</h1>
+            <p class="page-subtitle">A clear count for every bench, every hour.</p>
+          </div>
+          <div class="heading-actions">
+            <label class="history-control">
+              <span class="sr-only">Open a saved shift</span>
+              <select id="historySelect" aria-label="Open saved shift">
+                <option value="">Shift history</option>
+              </select>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5" /></svg>
+            </label>
+            <div class="export-wrap" id="exportWrap">
+              <button class="button button-outline" id="exportButton" type="button" aria-haspopup="menu" aria-expanded="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 14v2.5h12V14" /></svg>
+                Export
+                <svg class="export-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5" /></svg>
+              </button>
+              <div class="export-menu" id="exportMenu" role="menu" hidden>
+                <button type="button" role="menuitem" id="exportCurrentButton">This shift <small>CSV for Excel</small></button>
+                <button type="button" role="menuitem" id="exportAllButton">All shifts <small>CSV for Excel</small></button>
+              </div>
+            </div>
+            <button class="button button-dark" id="newShiftButton" type="button">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+              New shift
+            </button>
+          </div>
+        </section>
+
+        <section class="shift-panel" aria-label="Current shift">
+          <div class="shift-main">
+            <div class="shift-field date-field">
+              <label for="productionDate">Production date</label>
+              <div class="field-with-icon">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="13" rx="2"/><path d="M6.5 2.5v4M13.5 2.5v4M3 8.5h14" /></svg>
+                <input id="productionDate" type="date" />
+              </div>
+            </div>
+            <div class="date-day" id="dateDay">Tuesday</div>
+            <div class="shift-divider"></div>
+            <div class="shift-field shift-select-field">
+              <label for="shiftSelect">Shift</label>
+              <select id="shiftSelect">
+                <option value="AM">AM shift</option>
+                <option value="PM">PM shift</option>
+                <option value="Nights">Night shift</option>
+              </select>
+            </div>
+            <div class="shift-time" id="shiftTime">06:00 — 14:00</div>
+            <div class="shift-summary-chip" id="shiftHours">8 hours <span>·</span> Hour 5 break</div>
+          </div>
+          <div class="shift-team-chip team-green" id="shiftTeam" aria-label="Green shift"><span class="shift-team-dot" aria-hidden="true"></span><span id="shiftTeamLabel">Green Shift</span></div>
+          <div class="shift-status" id="shiftStatus">
+            <span class="status-pulse"></span><span>IN PROGRESS</span>
+          </div>
+        </section>
+
+        <section class="metrics-row" aria-label="Shift summary">
+          <article class="metric-card metric-operators">
+            <div class="metric-top"><span class="metric-label">EST. OPERATORS</span><span class="metric-icon people-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19M16 5.5a3 3 0 0 1 0 5.8m1.1 2.2a4.4 4.4 0 0 1 3.4 4.3V19" /></svg></span></div>
+            <div class="metric-value"><span id="operatorTotal">47</span><small>people</small></div>
+            <div class="metric-foot" id="operatorBreakdown">44 at benches · 3 on other tasks</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label"><i class="legend-dot mla-dot"></i> MLA SHIFT TOTAL</span><span class="metric-icon mla-icon"><span>M</span></span></div>
+            <div class="metric-value"><span id="mlaGrandTotal">—</span><small>parts</small></div>
+            <div class="metric-foot" id="mlaBenchStatus">18 benches</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span class="metric-label"><i class="legend-dot ema-dot"></i> EMA SHIFT TOTAL</span><span class="metric-icon ema-icon"><span>E</span></span></div>
+            <div class="metric-value"><span id="emaGrandTotal">—</span><small>parts</small></div>
+            <div class="metric-foot" id="emaBenchStatus">4 benches</div>
+          </article>
+          <article class="metric-card metric-target">
+            <div class="metric-top"><span class="metric-label">HOURLY TARGET</span><span class="metric-icon target-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2" /></svg></span></div>
+            <div class="metric-value"><span>120</span><small>parts / bench</small></div>
+            <div class="metric-foot">60 for one operator · half at break</div>
+          </article>
+        </section>
+
+        <section class="task-staffing" id="taskStaffing" aria-label="Additional shift tasks and staffing">
+          <div class="task-staffing-heading">
+            <div><h2>Other shift tasks</h2><p>Included in the estimated operator count above</p></div>
+          </div>
+          <div class="task-staffing-grid">
+            <div class="task-staffing-item">
+              <span class="task-name">Firewall</span>
+              <div class="operator-stepper" aria-label="Firewall operators">
+                <button class="stepper-button" type="button" data-task-step="-1" data-task="firewall" aria-label="Remove one Firewall operator">−</button>
+                <input class="task-count-input" type="number" min="0" max="99" step="1" inputmode="numeric" data-task-count="firewall" aria-label="Number of Firewall operators" value="0" />
+                <button class="stepper-button" type="button" data-task-step="1" data-task="firewall" aria-label="Add one Firewall operator">+</button>
+              </div>
+            </div>
+            <div class="task-staffing-item">
+              <span class="task-name">X-ray</span>
+              <div class="operator-stepper" aria-label="X-ray operators">
+                <button class="stepper-button" type="button" data-task-step="-1" data-task="xray" aria-label="Remove one X-ray operator">−</button>
+                <input class="task-count-input" type="number" min="0" max="99" step="1" inputmode="numeric" data-task-count="xray" aria-label="Number of X-ray operators" value="0" />
+                <button class="stepper-button" type="button" data-task-step="1" data-task="xray" aria-label="Add one X-ray operator">+</button>
+              </div>
+            </div>
+            <div class="task-staffing-item task-fixed">
+              <span class="task-name">CS01</span>
+              <label class="task-fixed-toggle">
+                <input type="checkbox" data-fixed-task="cs01" aria-label="Include 2 CS01 operators in this shift" checked />
+                <span class="task-fixed-count">2 operators</span>
+                <span class="task-fixed-state" data-fixed-task-state="cs01">Included</span>
+              </label>
+            </div>
+            <div class="task-staffing-item task-fixed">
+              <span class="task-name">CS02</span>
+              <label class="task-fixed-toggle">
+                <input type="checkbox" data-fixed-task="cs02" aria-label="Include 1 CS02 operator in this shift" checked />
+                <span class="task-fixed-count">1 operator</span>
+                <span class="task-fixed-state" data-fixed-task-state="cs02">Included</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="board-section" aria-label="Bench production counts">
+          <div class="board-title-row">
+            <div>
+              <h2>Hourly production</h2>
+              <p>Enter each bench count. Blue meets target; red is under target.</p>
+            </div>
+            <div class="board-legend" aria-label="Count status legend">
+              <span><i class="legend-dot on-target"></i> On target</span>
+              <span><i class="legend-dot under-target"></i> Under target</span>
+              <span><i class="legend-dot not-entered"></i> Not entered</span>
+            </div>
+          </div>
+          <div class="board-tools">
+            <div class="product-filters" role="tablist" aria-label="Filter product">
+              <button type="button" class="filter-button active" data-filter="ALL" role="tab" aria-selected="true">All benches <span id="allBenchCount">22</span></button>
+              <button type="button" class="filter-button" data-filter="MLA" role="tab" aria-selected="false">MLA <span>18</span></button>
+              <button type="button" class="filter-button" data-filter="EMA" role="tab" aria-selected="false">EMA <span>4</span></button>
+            </div>
+            <div class="completion-note" id="completionNote"><span class="completion-check">✓</span> <span>Enter every active hour to unlock shift totals</span></div>
+          </div>
+
+          <div class="desktop-board-wrap">
+            <table class="production-table" id="productionTable"></table>
+          </div>
+          <div class="mobile-board" id="mobileBoard"></div>
+          <div class="board-footer">
+            <span><kbd>Tab</kbd> to move between count fields</span>
+            <span>Hour 5 targets are halved for the 30-minute break.</span>
+          </div>
+        </section>
+
+        <section class="finalize-bar" id="finalizeBar">
+          <div class="finalize-copy">
+            <span class="finalize-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" /></svg></span>
+            <div><strong id="finalizeTitle">Ready when all counts are in</strong><p id="finalizeMessage">Complete the active benches to see shift totals and save this shift.</p></div>
+          </div>
+          <button class="button button-primary" id="finalizeButton" type="button" disabled>Finalize shift <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6" /></svg></button>
+        </section>
+      </main>
+      <footer class="app-footer"><span>Cell spacer production board</span><span id="footerSync">Changes save automatically</span></footer>
+    </div>
+
+    <div class="activity-backdrop" id="activityBackdrop" hidden></div>
+    <aside class="activity-sidebar" id="activitySidebar" aria-labelledby="activityTitle" aria-hidden="true" inert>
+      <header class="activity-header">
+        <div><h2 id="activityTitle">Activity history</h2><p>Recent changes across this board</p></div>
+        <button class="activity-close" id="activityCloseButton" type="button" aria-label="Close activity history">×</button>
+      </header>
+      <div class="activity-status" id="activityStatus" role="status" aria-live="polite">Open to view recent changes.</div>
+      <ol class="activity-list" id="activityList"></ol>
+      <button class="activity-more" id="activityMoreButton" type="button" hidden>Load older activity</button>
+      <p class="activity-note">Shows a generic device label and change time, not a person's name. Logging begins after the migration is installed.</p>
+    </aside>
+
+    <dialog class="modal" id="connectModal" aria-labelledby="connectTitle">
+      <form method="dialog" class="modal-close-form"><button class="icon-button modal-close" aria-label="Close">×</button></form>
+      <div class="modal-symbol"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 14.5 5 17a3 3 0 0 1-4-4l4-4a3 3 0 0 1 4.2 0M16.5 9.5 19 7a3 3 0 0 1 4 4l-4 4a3 3 0 0 1-4.2 0M8.5 15.5l7-7" /></svg></div>
+      <p class="eyebrow">SHARE THIS BOARD</p>
+      <h2 id="connectTitle">Connect a shared board</h2>
+      <p class="modal-intro">Connect a Supabase project to sync counts live across phones and laptops. Your board stays saved on this device until you connect.</p>
+      <div class="modal-fields">
+        <label for="supabaseUrl">Project URL</label>
+        <input id="supabaseUrl" type="url" placeholder="https://your-project.supabase.co" autocomplete="url" />
+        <label for="supabaseKey">Anon / publishable key</label>
+        <input id="supabaseKey" type="password" placeholder="sb_publishable_… or anon key" autocomplete="off" />
+      </div>
+      <div class="modal-note"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 9v4M10 6.5v.01" /></svg><span>Use the public anon/publishable key only. Existing boards need the <code>supabase-activity-log.sql</code> migration for shared activity history.</span></div>
+      <div class="modal-actions">
+        <button class="button button-quiet" id="disconnectButton" type="button">Use this device only</button>
+        <button class="button button-primary" id="saveConnectionButton" type="button">Connect board</button>
+      </div>
+      <p class="modal-error" id="connectionError" role="alert"></p>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
