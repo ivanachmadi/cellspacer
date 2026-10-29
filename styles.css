@@ -202,6 +202,7 @@ h1 { font: 800 30px/1.1 "Manrope", sans-serif; letter-spacing: -.04em; margin-bo
 .task-count-input:focus { border-color: #7db9b1; outline: 2px solid #def0ec; }
 .task-count-input:disabled { color: #75827f; background: #eef2f0; opacity: 1; -webkit-text-fill-color: #75827f; }
 .operator-note { display: block; width: 100%; min-width: 0; height: 21px; border: 1px solid #e1e9e6; border-radius: 4px; padding: 2px 5px; color: #496965; background: #fff; font: 500 8px "DM Sans", sans-serif; }
+.operator-note[hidden] { display: none; }
 .operator-note::placeholder { color: #a0adaa; }
 .operator-note:focus { border-color: #83b9b0; outline: 2px solid #def0ec; }
 .operator-note:disabled { color: #8d9b98; background: #f0f3f2; opacity: 1; -webkit-text-fill-color: #8d9b98; }

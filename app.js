@@ -760,7 +760,8 @@
       const taskOff = VARIABLE_TASKS.includes(taskKey)
         ? taskOperatorCount(shift, taskKey) === 0
         : FIXED_TASKS.some((task) => task.key === taskKey) && !fixedTaskIncluded(shift, taskKey);
-      input.disabled = !!shift.finalized || benchOff || taskOff;
+      input.hidden = benchOff || taskOff;
+      input.disabled = !!shift.finalized;
     }
     for (const input of document.querySelectorAll("[data-task-count]")) {
       const task = input.dataset.taskCount;
@@ -793,9 +794,9 @@
     return `<label class="status-toggle ${status === "inactive" ? "disabled-toggle" : ""}" title="${statusHelp}"><input type="checkbox" data-action="${status}" data-bench="${safe(bench)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} aria-label="${safe(label)}: ${statusHelp}"><span>${label}</span></label>`;
   }
 
-  function operatorNoteInput(shift, key, label, disabled, className = "") {
+  function operatorNoteInput(shift, key, label, disabled, className = "", hidden = false) {
     const value = String(shift.notes?.[key] || "").slice(0, 15);
-    return `<input class="operator-note ${className}" type="text" maxlength="15" autocomplete="off" value="${safe(value)}" placeholder="Operator names" data-note-key="${safe(key)}" data-note-label="${safe(label)}" aria-label="Operator names for ${safe(label)}, up to 15 characters" title="Operator names · 15 characters maximum" ${disabled ? "disabled" : ""}>`;
+    return `<input class="operator-note ${className}" type="text" maxlength="15" autocomplete="off" value="${safe(value)}" placeholder="Operator names" data-note-key="${safe(key)}" data-note-label="${safe(label)}" aria-label="Operator names for ${safe(label)}, up to 15 characters" title="Operator names · 15 characters maximum" ${disabled ? "disabled" : ""} ${hidden ? "hidden" : ""}>`;
   }
 
   function renderTables(shift, schedule) {
@@ -815,7 +816,7 @@
         const result = getBenchResult(shift, bench);
         const disabled = !!shift.finalized;
         const off = !!shift.inactive[bench];
-        html += `<tr class="bench-row ${off ? "off-shift" : ""}" data-product="${product}" data-bench-row="${safe(bench)}"><td class="bench-cell ${result.complete && !off ? "completed" : ""}"><div class="bench-name-line"><span class="bench-id">${safe(bench)}</span><span class="best-bench-badge" data-best-bench-badge hidden>TOP ${product}</span><span class="bench-completion" data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div>${operatorNoteInput(shift, bench, bench, disabled || off, "bench-operator-note")}</td>`;
+        html += `<tr class="bench-row ${off ? "off-shift" : ""}" data-product="${product}" data-bench-row="${safe(bench)}"><td class="bench-cell ${result.complete && !off ? "completed" : ""}"><div class="bench-name-line"><span class="bench-id">${safe(bench)}</span><span class="best-bench-badge" data-best-bench-badge hidden>TOP ${product}</span><span class="bench-completion" data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div>${operatorNoteInput(shift, bench, bench, disabled, "bench-operator-note", off)}</td>`;
         html += `<td class="status-cell"><div class="status-controls">${statusInput(bench, "single", !!shift.singleOp[bench], disabled || off, "1 op")}${statusInput(bench, "inactive", off, disabled, "Off shift")}</div></td>`;
         for (const hour of schedule.hours) {
           const count = shift.entries[bench][hour.index];
@@ -845,7 +846,7 @@
         const result = getBenchResult(shift, bench);
         const off = !!shift.inactive[bench];
         const disabled = !!shift.finalized;
-        mobile += `<article class="mobile-bench-card ${off ? "off-shift" : ""}" data-bench-row="${safe(bench)}"><div class="mobile-bench-head"><div class="mobile-bench-info"><div class="mobile-bench-title"><strong>${safe(bench)}</strong><span class="best-bench-badge" data-best-bench-badge hidden>TOP ${product}</span><span data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div>${operatorNoteInput(shift, bench, bench, disabled || off, "bench-operator-note")}</div><div class="mobile-status-controls">${statusInput(bench, "single", !!shift.singleOp[bench], disabled || off, "1 op")}${statusInput(bench, "inactive", off, disabled, "Off shift")}</div></div><div class="mobile-hours">`;
+        mobile += `<article class="mobile-bench-card ${off ? "off-shift" : ""}" data-bench-row="${safe(bench)}"><div class="mobile-bench-head"><div class="mobile-bench-info"><div class="mobile-bench-title"><strong>${safe(bench)}</strong><span class="best-bench-badge" data-best-bench-badge hidden>TOP ${product}</span><span data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div>${operatorNoteInput(shift, bench, bench, disabled, "bench-operator-note", off)}</div><div class="mobile-status-controls">${statusInput(bench, "single", !!shift.singleOp[bench], disabled || off, "1 op")}${statusInput(bench, "inactive", off, disabled, "Off shift")}</div></div><div class="mobile-hours">`;
         for (const hour of schedule.hours) {
           const count = shift.entries[bench][hour.index];
           const hourOff = !!shift.hourDisabled[bench][hour.index];
