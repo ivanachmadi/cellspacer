@@ -12,6 +12,11 @@
   const VARIABLE_TASKS = ["firewall", "xray"];
   const TASK_OPERATOR_LIMIT = 99;
   const FIXED_TASKS = [{ key: "cs01", operators: 2 }, { key: "cs02", operators: 1 }];
+  const NOTE_KEYS = [
+    ...BENCHES,
+    ...VARIABLE_TASKS.map((task) => `task:${task}`),
+    ...FIXED_TASKS.map((task) => `task:${task.key}`),
+  ];
   const SHIFT_ORDER = ["AM", "PM", "Nights"];
   const SHIFT_COLOR_ANCHOR = "2026-10-26";
   const FALLBACK = { shifts: {}, loadedShifts: {}, currentId: null, cellTimestamps: {}, activity: [], config: null };
@@ -389,6 +394,7 @@
       singleOp: Object.fromEntries(BENCHES.map((bench) => [bench, false])),
       inactive: Object.fromEntries(BENCHES.map((bench) => [bench, false])),
       taskOperators: { firewall: 0, xray: 0, cs01: true, cs02: true },
+      notes: Object.fromEntries(NOTE_KEYS.map((key) => [key, ""])),
     };
   }
 
@@ -421,6 +427,7 @@
 
   function cellId(shift, bench = null, hour = null) {
     if (bench === null) return `${shift.id}::meta`;
+    if (hour === "note") return `${shift.id}::${bench}::note`;
     if (hour === null) return `${shift.id}::${bench}::status`;
     return `${shift.id}::${bench}::h${hour}`;
   }
@@ -442,6 +449,9 @@
       };
     }
     const bench = parts[1];
+    if (parts[2] === "note" && NOTE_KEYS.includes(bench)) {
+      return { note: String(shift.notes?.[bench] || "").slice(0, 15) };
+    }
     if (parts[2] === "status") {
       return { singleOp: !!shift.singleOp[bench], inactive: !!shift.inactive[bench] };
     }
@@ -460,6 +470,7 @@
     if (parts[2] === "status") {
       return !!shift.singleOp[parts[1]] || !!shift.inactive[parts[1]];
     }
+    if (parts[2] === "note" && NOTE_KEYS.includes(parts[1])) return !!shift.notes?.[parts[1]];
     if (parts[2]?.startsWith("h")) {
       const index = Number(parts[2].slice(1));
       const count = shift.entries[parts[1]]?.[index];
@@ -485,8 +496,10 @@
     const keys = [cellId(shift)];
     for (const bench of BENCHES) {
       keys.push(cellId(shift, bench));
+      keys.push(cellId(shift, bench, "note"));
       for (let hour = 0; hour < schedule.length; hour += 1) keys.push(cellId(shift, bench, hour));
     }
+    for (const key of NOTE_KEYS.filter((item) => item.startsWith("task:"))) keys.push(cellId(shift, key, "note"));
     return keys;
   }
 
@@ -540,6 +553,9 @@
           ])),
         };
       }
+    } else if (parts[2] === "note" && NOTE_KEYS.includes(parts[1])) {
+      shift.notes ||= {};
+      shift.notes[parts[1]] = String(value.note || "").slice(0, 15);
     } else if (parts[2] === "status" && BENCHES.includes(parts[1])) {
       shift.singleOp[parts[1]] = !!value.singleOp;
       shift.inactive[parts[1]] = !!value.inactive;
@@ -612,6 +628,69 @@
     return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   }
 
+  function shiftPerformance(shift, schedule) {
+    let actual = 0;
+    let target = 0;
+    let enteredHours = 0;
+    const averages = new Map();
+    for (const bench of BENCHES) {
+      if (shift.inactive[bench]) continue;
+      let total = 0;
+      let hours = 0;
+      for (const hour of schedule.hours) {
+        if (shift.hourDisabled[bench][hour.index]) continue;
+        const count = shift.entries[bench][hour.index];
+        if (count === null || count === undefined || count === "") continue;
+        const numericCount = Number(count);
+        if (!Number.isFinite(numericCount)) continue;
+        total += numericCount;
+        target += goalFor(shift, bench, hour.index);
+        actual += numericCount;
+        hours += 1;
+        enteredHours += 1;
+      }
+      if (hours) averages.set(bench, total / hours);
+    }
+    const attainment = target ? actual / target * 100 : 0;
+    return { actual, target, enteredHours, attainment, averages };
+  }
+
+  function formatAverage(value) {
+    return Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 });
+  }
+
+  function renderShiftPerformance(shift, schedule) {
+    const metrics = shiftPerformance(shift, schedule);
+    const attainment = el("shiftAttainment");
+    attainment.textContent = `${formatAverage(metrics.attainment)}%`;
+    attainment.dataset.level = metrics.attainment >= 100 ? "green" : metrics.attainment >= 90 ? "yellow" : "red";
+    el("attainmentDetail").textContent = `${formatNumber(metrics.actual)} of ${formatNumber(metrics.target)} target parts · ${metrics.enteredHours} entered ${metrics.enteredHours === 1 ? "hour" : "hours"}`;
+
+    const leaders = new Set();
+    for (const product of PRODUCTS) {
+      const benches = BENCHES.filter((bench) => bench.startsWith(`${product} `));
+      const list = el(`${product.toLowerCase()}BenchAverages`);
+      list.innerHTML = benches.map((bench) => {
+        const value = shift.inactive[bench] ? "OFF" : metrics.averages.has(bench) ? formatAverage(metrics.averages.get(bench)) : "—";
+        const title = shift.inactive[bench] ? `${bench}: off shift` : metrics.averages.has(bench) ? `${bench}: ${value} parts per entered hour` : `${bench}: no counts entered`;
+        return `<span class="bench-average-item" title="${safe(title)}" aria-label="${safe(title)}"><span>${safe(bench.slice(product.length + 1))}</span><b>${safe(value)}</b></span>`;
+      }).join("");
+      const current = benches.filter((bench) => metrics.averages.has(bench));
+      if (current.length) {
+        const highest = Math.max(...current.map((bench) => metrics.averages.get(bench)));
+        for (const bench of current) {
+          if (Math.abs(metrics.averages.get(bench) - highest) < 1e-9) leaders.add(bench);
+        }
+      }
+    }
+    for (const row of document.querySelectorAll("[data-bench-row]")) {
+      const isLeader = leaders.has(row.dataset.benchRow);
+      row.classList.toggle("is-best-bench", isLeader);
+      const badge = row.querySelector("[data-best-bench-badge]");
+      if (badge) badge.hidden = !isLeader;
+    }
+  }
+
   function render() {
     const shift = activeShift();
     if (!shift) return;
@@ -665,6 +744,10 @@
   }
 
   function renderTaskStaffing(shift) {
+    for (const input of document.querySelectorAll("[data-note-key]")) {
+      input.value = String(shift.notes?.[input.dataset.noteKey] || "").slice(0, 15);
+      input.disabled = !!shift.finalized || (BENCHES.includes(input.dataset.noteKey) && !!shift.inactive[input.dataset.noteKey]);
+    }
     for (const input of document.querySelectorAll("[data-task-count]")) {
       const task = input.dataset.taskCount;
       input.value = taskOperatorCount(shift, task);
@@ -696,11 +779,16 @@
     return `<label class="status-toggle ${status === "inactive" ? "disabled-toggle" : ""}" title="${statusHelp}"><input type="checkbox" data-action="${status}" data-bench="${safe(bench)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""} aria-label="${safe(label)}: ${statusHelp}"><span>${label}</span></label>`;
   }
 
+  function operatorNoteInput(shift, key, label, disabled, className = "") {
+    const value = String(shift.notes?.[key] || "").slice(0, 15);
+    return `<input class="operator-note ${className}" type="text" maxlength="15" autocomplete="off" value="${safe(value)}" placeholder="Operator names" data-note-key="${safe(key)}" data-note-label="${safe(label)}" aria-label="Operator names for ${safe(label)}, up to 15 characters" title="Operator names · 15 characters maximum" ${disabled ? "disabled" : ""}>`;
+  }
+
   function renderTables(shift, schedule) {
     const columns = 3 + schedule.length;
-    let html = '<colgroup><col style="width:198px"><col style="width:142px">';
+    let html = '<colgroup><col style="width:220px"><col style="width:142px">';
     for (let i = 0; i < schedule.length; i += 1) html += '<col style="width:90px">';
-    html += '<col style="width:96px"></colgroup><thead><tr><th><span class="table-heading-label">BENCH / STATUS</span></th><th>OPERATOR STATUS</th>';
+    html += '<col style="width:96px"></colgroup><thead><tr><th><span class="table-heading-label">BENCH / OPS NOTE</span></th><th>OPERATOR STATUS</th>';
     for (const hour of schedule.hours) {
       html += `<th class="hour-col"><span class="hour-heading">Hour ${hour.index + 1}</span><span class="hour-time">${timeText(hour.from)}–${timeText(hour.to)}</span>${hour.break ? '<span class="break-label">BREAK</span>' : ""}</th>`;
     }
@@ -713,7 +801,7 @@
         const result = getBenchResult(shift, bench);
         const disabled = !!shift.finalized;
         const off = !!shift.inactive[bench];
-        html += `<tr class="bench-row ${off ? "off-shift" : ""}" data-product="${product}" data-bench-row="${safe(bench)}"><td class="bench-cell ${result.complete && !off ? "completed" : ""}"><div class="bench-name-line"><span class="bench-id">${safe(bench)}</span><span class="bench-completion" data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div></td>`;
+        html += `<tr class="bench-row ${off ? "off-shift" : ""}" data-product="${product}" data-bench-row="${safe(bench)}"><td class="bench-cell ${result.complete && !off ? "completed" : ""}"><div class="bench-name-line"><span class="bench-id">${safe(bench)}</span><span class="best-bench-badge" data-best-bench-badge hidden>TOP ${product}</span><span class="bench-completion" data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div>${operatorNoteInput(shift, bench, bench, disabled || off, "bench-operator-note")}</td>`;
         html += `<td class="status-cell"><div class="status-controls">${statusInput(bench, "single", !!shift.singleOp[bench], disabled || off, "1 op")}${statusInput(bench, "inactive", off, disabled, "Off shift")}</div></td>`;
         for (const hour of schedule.hours) {
           const count = shift.entries[bench][hour.index];
@@ -743,7 +831,7 @@
         const result = getBenchResult(shift, bench);
         const off = !!shift.inactive[bench];
         const disabled = !!shift.finalized;
-        mobile += `<article class="mobile-bench-card ${off ? "off-shift" : ""}" data-bench-row="${safe(bench)}"><div class="mobile-bench-head"><div class="mobile-bench-title"><strong>${safe(bench)}</strong><span data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div><div class="mobile-status-controls">${statusInput(bench, "single", !!shift.singleOp[bench], disabled || off, "1 op")}${statusInput(bench, "inactive", off, disabled, "Off shift")}</div></div><div class="mobile-hours">`;
+        mobile += `<article class="mobile-bench-card ${off ? "off-shift" : ""}" data-bench-row="${safe(bench)}"><div class="mobile-bench-head"><div class="mobile-bench-info"><div class="mobile-bench-title"><strong>${safe(bench)}</strong><span class="best-bench-badge" data-best-bench-badge hidden>TOP ${product}</span><span data-completion="${safe(bench)}">${off ? "OFF SHIFT" : `${result.done}/${result.required} hrs`}</span></div>${operatorNoteInput(shift, bench, bench, disabled || off, "bench-operator-note")}</div><div class="mobile-status-controls">${statusInput(bench, "single", !!shift.singleOp[bench], disabled || off, "1 op")}${statusInput(bench, "inactive", off, disabled, "Off shift")}</div></div><div class="mobile-hours">`;
         for (const hour of schedule.hours) {
           const count = shift.entries[bench][hour.index];
           const hourOff = !!shift.hourDisabled[bench][hour.index];
@@ -791,6 +879,7 @@
     renderTaskStaffing(shift);
     el("completionNote").classList.toggle("complete", progress.complete);
     el("completionNote").querySelector("span:last-child").textContent = progress.complete ? "All active hours are complete" : "Enter every active hour to unlock shift totals";
+    renderShiftPerformance(shift, schedule);
 
     for (const bench of BENCHES) {
       const result = getBenchResult(shift, bench);
@@ -1332,16 +1421,16 @@
   }
 
   function shiftHasData(shift) {
-    return shift.finalized || VARIABLE_TASKS.some((task) => taskOperatorCount(shift, task) > 0) || FIXED_TASKS.some((task) => !fixedTaskIncluded(shift, task.key)) || BENCHES.some((bench) => shift.inactive[bench] || shift.singleOp[bench]
+    return shift.finalized || Object.values(shift.notes || {}).some((note) => String(note || "").trim()) || VARIABLE_TASKS.some((task) => taskOperatorCount(shift, task) > 0) || FIXED_TASKS.some((task) => !fixedTaskIncluded(shift, task.key)) || BENCHES.some((bench) => shift.inactive[bench] || shift.singleOp[bench]
       || shift.hourDisabled[bench]?.some(Boolean)
       || shift.entries[bench]?.some((count) => count !== null && count !== undefined));
   }
 
   function exportRowsForShift(shift) {
     const schedule = getSchedule(shift.date, shift.shift);
-    const headers = ["Record type", "Production date", "Weekday", "Shift", "Shift team", "Saved", "Product", "Bench", "Operators", "Bench status", "Hours complete", "Required hours", "Shift total"];
+    const headers = ["Record type", "Production date", "Weekday", "Shift", "Shift team", "Saved", "Product", "Bench", "Operators", "Operator names", "Bench status", "Hours complete", "Required hours", "Shift total"];
     for (let index = 0; index < 8; index += 1) headers.push(`Hour ${index + 1} time`, `Hour ${index + 1} count`, `Hour ${index + 1} target`, `Hour ${index + 1} result`);
-    headers.push("Task", "Task operators", "Estimated shift operators");
+    headers.push("Task", "Task operators", "Estimated shift operators", "Task operator names");
     const lines = [csvLine(headers)];
     const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(new Date(`${shift.date}T12:00:00`));
     const base = [shift.date, weekday, shift.shift, shiftTeamName(shift.date, shift.shift), shift.finalized ? "Yes" : "No"];
@@ -1362,7 +1451,7 @@
         hours.push(`${timeText(hour.from)}–${timeText(hour.to)}${hour.break ? " (break)" : ""}`, off || count === null || count === undefined ? "" : count, off ? "" : goalFor(shift, bench, index), off ? status : count === null || count === undefined ? "" : status);
       }
       const benchStatus = result.inactive ? "Off shift" : result.complete ? "Complete" : "Incomplete";
-      lines.push(csvLine(["Bench", ...base, product, bench, shift.singleOp[bench] ? "1" : "2", benchStatus, result.done, result.required, result.complete && !result.inactive ? result.total : "", ...hours, "", "", ""]));
+      lines.push(csvLine(["Bench", ...base, product, bench, shift.singleOp[bench] ? "1" : "2", shift.notes?.[bench] || "", benchStatus, result.done, result.required, result.complete && !result.inactive ? result.total : "", ...hours, "", "", "", ""]));
     }
 
     for (const product of PRODUCTS) {
@@ -1374,17 +1463,17 @@
         const hour = schedule.hours[index];
         hourlyCells.push(hour ? `${timeText(hour.from)}–${timeText(hour.to)}${hour.break ? " (break)" : ""}` : "", hour ? totals[index] : "", "", "");
       }
-      lines.push(csvLine(["Product hourly total", ...base, product, "", "", "", "", "", "", ...hourlyCells, "", "", ""]));
-      lines.push(csvLine(["Product shift total", ...base, product, "", "", complete.complete ? "Complete" : "Incomplete", "", "", complete.complete ? complete.total : "", ...Array(32).fill(""), "", "", ""]));
+      lines.push(csvLine(["Product hourly total", ...base, product, ...Array(7).fill(""), ...hourlyCells, ...Array(4).fill("")]));
+      lines.push(csvLine(["Product shift total", ...base, product, "", "", "", complete.complete ? "Complete" : "Incomplete", "", "", complete.complete ? complete.total : "", ...Array(32).fill(""), ...Array(4).fill("")]));
     }
     const estimatedOperators = operatorEstimate(shift).total;
     for (const task of [
-      { name: "Firewall", operators: taskOperatorCount(shift, "firewall") },
-      { name: "X-ray", operators: taskOperatorCount(shift, "xray") },
-      { name: "CS01", operators: fixedTaskIncluded(shift, "cs01") ? 2 : 0 },
-      { name: "CS02", operators: fixedTaskIncluded(shift, "cs02") ? 1 : 0 },
+      { name: "Firewall", key: "firewall", operators: taskOperatorCount(shift, "firewall") },
+      { name: "X-ray", key: "xray", operators: taskOperatorCount(shift, "xray") },
+      { name: "CS01", key: "cs01", operators: fixedTaskIncluded(shift, "cs01") ? 2 : 0 },
+      { name: "CS02", key: "cs02", operators: fixedTaskIncluded(shift, "cs02") ? 1 : 0 },
     ]) {
-      lines.push(csvLine(["Task staffing", ...base, "", "", "", "", "", "", "", ...Array(32).fill(""), task.name, task.operators, estimatedOperators]));
+      lines.push(csvLine(["Task staffing", ...base, "", ...Array(7).fill(""), ...Array(32).fill(""), task.name, task.operators, estimatedOperators, shift.notes?.[`task:${task.key}`] || ""]));
     }
     return lines.join("\r\n");
   }
@@ -1423,6 +1512,30 @@
     });
     refreshSummaries();
     renderHistory(shift);
+  }
+
+  function updateOperatorNote(input) {
+    const shift = activeShift();
+    const key = input.dataset.noteKey;
+    if (!shift || shift.finalized || !NOTE_KEYS.includes(key)) return;
+    const next = input.value.slice(0, 15);
+    if (input.value !== next) input.value = next;
+    shift.notes ||= {};
+    const previous = String(shift.notes[key] || "");
+    if (previous === next) return;
+    shift.notes[key] = next;
+    touchCell(shift, cellId(shift, key, "note"));
+  }
+
+  function logOperatorNoteChange(input) {
+    const shift = activeShift();
+    if (!shift) return;
+    const previous = input.dataset.noteBefore;
+    const current = String(shift.notes?.[input.dataset.noteKey] || "");
+    delete input.dataset.noteBefore;
+    if (previous === undefined || previous === current) return;
+    const label = input.dataset.noteLabel || input.dataset.noteKey;
+    addActivity(shift, "operator_note", `Operator names updated for ${label}`, { item: label });
   }
 
   function downloadCsv(filename, content) {
@@ -1548,6 +1661,17 @@
       }
     });
     el("newShiftButton").addEventListener("click", nextShift);
+    for (const root of [table, mobileBoard, el("taskStaffing")]) {
+      root.addEventListener("focusin", (event) => {
+        if (event.target.matches("[data-note-key]")) event.target.dataset.noteBefore = event.target.value;
+      });
+      root.addEventListener("input", (event) => {
+        if (event.target.matches("[data-note-key]")) updateOperatorNote(event.target);
+      });
+      root.addEventListener("change", (event) => {
+        if (event.target.matches("[data-note-key]")) logOperatorNoteChange(event.target);
+      });
+    }
     table.addEventListener("input", (event) => { if (event.target.matches('[data-action="count"]')) { sanitizeCountInput(event.target); handleCountInput(event.target); } });
     mobileBoard.addEventListener("input", (event) => { if (event.target.matches('[data-action="count"]')) { sanitizeCountInput(event.target); handleCountInput(event.target); } });
     table.addEventListener("change", (event) => {

@@ -127,9 +127,20 @@
             <div class="metric-foot" id="emaBenchStatus">4 benches</div>
           </article>
           <article class="metric-card metric-target">
-            <div class="metric-top"><span class="metric-label">HOURLY TARGET</span><span class="metric-icon target-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2" /></svg></span></div>
-            <div class="metric-value"><span>120</span><small>parts / bench</small></div>
-            <div class="metric-foot">60 for one operator · half at break</div>
+            <div class="metric-top"><span class="metric-label">SHIFT TARGET ATTAINMENT</span><span class="metric-icon target-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2" /></svg></span></div>
+            <div class="metric-value attainment-value" id="shiftAttainment" data-level="red" aria-live="polite">0%</div>
+            <div class="metric-foot" id="attainmentDetail">0 of 0 target parts · 0 entered hours</div>
+            <div class="bench-average-wrap">
+              <div class="bench-average-heading">RUNNING BENCH AVERAGES <span>parts / entered hour</span></div>
+              <div class="bench-average-products">
+                <section class="bench-average-product" aria-label="MLA running averages">
+                  <strong>MLA</strong><div class="bench-average-grid" id="mlaBenchAverages"></div>
+                </section>
+                <section class="bench-average-product" aria-label="EMA running averages">
+                  <strong>EMA</strong><div class="bench-average-grid" id="emaBenchAverages"></div>
+                </section>
+              </div>
+            </div>
           </article>
         </section>
 
@@ -139,7 +150,7 @@
           </div>
           <div class="task-staffing-grid">
             <div class="task-staffing-item">
-              <span class="task-name">Firewall</span>
+              <div class="task-identity"><span class="task-name">Firewall</span><input class="operator-note task-operator-note" type="text" maxlength="15" autocomplete="off" placeholder="Operator names" data-note-key="task:firewall" data-note-label="Firewall" aria-label="Operator names for Firewall, up to 15 characters" /></div>
               <div class="operator-stepper" aria-label="Firewall operators">
                 <button class="stepper-button" type="button" data-task-step="-1" data-task="firewall" aria-label="Remove one Firewall operator">−</button>
                 <input class="task-count-input" type="number" min="0" max="99" step="1" inputmode="numeric" data-task-count="firewall" aria-label="Number of Firewall operators" value="0" />
@@ -147,7 +158,7 @@
               </div>
             </div>
             <div class="task-staffing-item">
-              <span class="task-name">X-ray</span>
+              <div class="task-identity"><span class="task-name">X-ray</span><input class="operator-note task-operator-note" type="text" maxlength="15" autocomplete="off" placeholder="Operator names" data-note-key="task:xray" data-note-label="X-ray" aria-label="Operator names for X-ray, up to 15 characters" /></div>
               <div class="operator-stepper" aria-label="X-ray operators">
                 <button class="stepper-button" type="button" data-task-step="-1" data-task="xray" aria-label="Remove one X-ray operator">−</button>
                 <input class="task-count-input" type="number" min="0" max="99" step="1" inputmode="numeric" data-task-count="xray" aria-label="Number of X-ray operators" value="0" />
@@ -155,7 +166,7 @@
               </div>
             </div>
             <div class="task-staffing-item task-fixed">
-              <span class="task-name">CS01</span>
+              <div class="task-identity"><span class="task-name">CS01</span><input class="operator-note task-operator-note" type="text" maxlength="15" autocomplete="off" placeholder="Operator names" data-note-key="task:cs01" data-note-label="CS01" aria-label="Operator names for CS01, up to 15 characters" /></div>
               <label class="task-fixed-toggle">
                 <input type="checkbox" data-fixed-task="cs01" aria-label="Include 2 CS01 operators in this shift" checked />
                 <span class="task-fixed-count">2 operators</span>
@@ -163,7 +174,7 @@
               </label>
             </div>
             <div class="task-staffing-item task-fixed">
-              <span class="task-name">CS02</span>
+              <div class="task-identity"><span class="task-name">CS02</span><input class="operator-note task-operator-note" type="text" maxlength="15" autocomplete="off" placeholder="Operator names" data-note-key="task:cs02" data-note-label="CS02" aria-label="Operator names for CS02, up to 15 characters" /></div>
               <label class="task-fixed-toggle">
                 <input type="checkbox" data-fixed-task="cs02" aria-label="Include 1 CS02 operator in this shift" checked />
                 <span class="task-fixed-count">1 operator</span>
