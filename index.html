@@ -9,9 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20261029-2" />
+    <link rel="stylesheet" href="styles.css?v=20261029-3" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261029-2" defer></script>
+    <script src="app.js?v=20261029-3" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -131,13 +131,13 @@
             <div class="metric-value attainment-value" id="shiftAttainment" data-level="red" aria-live="polite">0%</div>
             <div class="metric-foot" id="attainmentDetail">0 of 0 target parts · 0 entered hours</div>
             <div class="bench-average-wrap">
-              <div class="bench-average-heading">RUNNING BENCH AVERAGES <span>parts / entered hour</span></div>
+              <div class="bench-average-heading">BENCH AVERAGE</div>
               <div class="bench-average-products">
-                <section class="bench-average-product" aria-label="MLA running averages">
-                  <strong>MLA</strong><div class="bench-average-grid" id="mlaBenchAverages"></div>
+                <section class="bench-average-product" aria-label="MLA average count">
+                  <strong>MLA</strong><span class="bench-average-value" id="mlaBenchAverage">—</span>
                 </section>
-                <section class="bench-average-product" aria-label="EMA running averages">
-                  <strong>EMA</strong><div class="bench-average-grid" id="emaBenchAverages"></div>
+                <section class="bench-average-product" aria-label="EMA average count">
+                  <strong>EMA</strong><span class="bench-average-value" id="emaBenchAverage">—</span>
                 </section>
               </div>
             </div>

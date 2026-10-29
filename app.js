@@ -632,11 +632,14 @@
     let actual = 0;
     let target = 0;
     let enteredHours = 0;
-    const averages = new Map();
+    const products = Object.fromEntries(PRODUCTS.map((product) => [product, { actual: 0, target: 0, enteredHours: 0 }]));
+    const benchPerformance = new Map();
     for (const bench of BENCHES) {
       if (shift.inactive[bench]) continue;
       let total = 0;
+      let benchTarget = 0;
       let hours = 0;
+      const product = bench.startsWith("MLA ") ? "MLA" : "EMA";
       for (const hour of schedule.hours) {
         if (shift.hourDisabled[bench][hour.index]) continue;
         const count = shift.entries[bench][hour.index];
@@ -644,15 +647,24 @@
         const numericCount = Number(count);
         if (!Number.isFinite(numericCount)) continue;
         total += numericCount;
-        target += goalFor(shift, bench, hour.index);
+        const hourTarget = goalFor(shift, bench, hour.index);
+        benchTarget += hourTarget;
+        products[product].actual += numericCount;
+        products[product].target += hourTarget;
+        products[product].enteredHours += 1;
+        target += hourTarget;
         actual += numericCount;
         hours += 1;
         enteredHours += 1;
       }
-      if (hours) averages.set(bench, total / hours);
+      if (hours && benchTarget) benchPerformance.set(bench, { attainment: total / benchTarget * 100 });
     }
     const attainment = target ? actual / target * 100 : 0;
-    return { actual, target, enteredHours, attainment, averages };
+    const averages = new Map(PRODUCTS.map((product) => {
+      const totals = products[product];
+      return [product, totals.enteredHours ? totals.actual / totals.enteredHours : null];
+    }));
+    return { actual, target, enteredHours, attainment, averages, benchPerformance };
   }
 
   function formatAverage(value) {
@@ -669,17 +681,13 @@
     const leaders = new Set();
     for (const product of PRODUCTS) {
       const benches = BENCHES.filter((bench) => bench.startsWith(`${product} `));
-      const list = el(`${product.toLowerCase()}BenchAverages`);
-      list.innerHTML = benches.map((bench) => {
-        const value = shift.inactive[bench] ? "OFF" : metrics.averages.has(bench) ? formatAverage(metrics.averages.get(bench)) : "—";
-        const title = shift.inactive[bench] ? `${bench}: off shift` : metrics.averages.has(bench) ? `${bench}: ${value} parts per entered hour` : `${bench}: no counts entered`;
-        return `<span class="bench-average-item" title="${safe(title)}" aria-label="${safe(title)}"><span>${safe(bench.slice(product.length + 1))}</span><b>${safe(value)}</b></span>`;
-      }).join("");
-      const current = benches.filter((bench) => metrics.averages.has(bench));
+      const average = metrics.averages.get(product);
+      el(`${product.toLowerCase()}BenchAverage`).textContent = average === null ? "—" : formatAverage(average);
+      const current = benches.filter((bench) => metrics.benchPerformance.has(bench));
       if (current.length) {
-        const highest = Math.max(...current.map((bench) => metrics.averages.get(bench)));
+        const highest = Math.max(...current.map((bench) => metrics.benchPerformance.get(bench).attainment));
         for (const bench of current) {
-          if (Math.abs(metrics.averages.get(bench) - highest) < 1e-9) leaders.add(bench);
+          if (Math.abs(metrics.benchPerformance.get(bench).attainment - highest) < 1e-9) leaders.add(bench);
         }
       }
     }
@@ -745,8 +753,14 @@
 
   function renderTaskStaffing(shift) {
     for (const input of document.querySelectorAll("[data-note-key]")) {
-      input.value = String(shift.notes?.[input.dataset.noteKey] || "").slice(0, 15);
-      input.disabled = !!shift.finalized || (BENCHES.includes(input.dataset.noteKey) && !!shift.inactive[input.dataset.noteKey]);
+      const key = input.dataset.noteKey;
+      input.value = String(shift.notes?.[key] || "").slice(0, 15);
+      const benchOff = BENCHES.includes(key) && !!shift.inactive[key];
+      const taskKey = key.startsWith("task:") ? key.slice(5) : "";
+      const taskOff = VARIABLE_TASKS.includes(taskKey)
+        ? taskOperatorCount(shift, taskKey) === 0
+        : FIXED_TASKS.some((task) => task.key === taskKey) && !fixedTaskIncluded(shift, taskKey);
+      input.disabled = !!shift.finalized || benchOff || taskOff;
     }
     for (const input of document.querySelectorAll("[data-task-count]")) {
       const task = input.dataset.taskCount;

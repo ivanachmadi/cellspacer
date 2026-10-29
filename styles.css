@@ -181,13 +181,10 @@ h1 { font: 800 30px/1.1 "Manrope", sans-serif; letter-spacing: -.04em; margin-bo
 .attainment-value[data-level="red"] { color: #b64749; }
 .bench-average-wrap { margin-top: 11px; padding-top: 8px; border-top: 1px solid #edf1ef; }
 .bench-average-heading { margin-bottom: 6px; color: #82938f; font-size: 7px; font-weight: 800; letter-spacing: .08em; }
-.bench-average-heading span { margin-left: 3px; color: #a0adaa; font-size: 7px; font-weight: 500; letter-spacing: 0; text-transform: none; }
-.bench-average-products { display: grid; grid-template-columns: 1.25fr .75fr; gap: 9px; }
-.bench-average-product { min-width: 0; }
-.bench-average-product > strong { display: block; margin-bottom: 4px; color: #60817c; font-size: 7px; letter-spacing: .08em; }
-.bench-average-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 5px; }
-.bench-average-item { display: flex; align-items: center; justify-content: space-between; gap: 3px; min-width: 0; padding: 2px 4px; border-radius: 3px; color: #728582; background: #f7faf9; font-size: 7px; line-height: 1.2; }
-.bench-average-item b { color: #3c615c; font-size: 7px; font-weight: 700; }
+.bench-average-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bench-average-product { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; padding: 5px 7px; border-radius: 4px; background: #f7faf9; }
+.bench-average-product > strong { color: #60817c; font-size: 7px; letter-spacing: .08em; }
+.bench-average-value { color: #3c615c; font: 700 10px "Manrope", sans-serif; }
 .task-staffing { margin: 0 0 28px; padding: 12px 14px 14px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 3px 12px rgba(22,58,57,.025); }
 .task-staffing-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .task-staffing-heading h2 { margin: 0 0 3px; color: #426260; font: 700 11px "Manrope", sans-serif; }
@@ -213,8 +210,6 @@ h1 { font: 800 30px/1.1 "Manrope", sans-serif; letter-spacing: -.04em; margin-bo
 .best-bench-badge[hidden] { display: none; }
 .task-fixed-count { color: #55736f; font-size: 9px; font-weight: 700; }
 .task-fixed-toggle { display: inline-flex; align-items: center; gap: 4px; color: #55736f; cursor: pointer; white-space: nowrap; }
-.task-fixed-toggle input { width: 14px; height: 14px; margin: 0; accent-color: var(--teal); cursor: pointer; }
-.task-fixed-toggle input:disabled { cursor: not-allowed; }
 .task-fixed-toggle .task-fixed-count { font-size: 8px; }
 .task-fixed-state { color: #428170; font-size: 8px; font-weight: 700; }
 .task-fixed-state.not-scheduled { color: #8e9a97; }
@@ -266,10 +261,10 @@ h1 { font: 800 30px/1.1 "Manrope", sans-serif; letter-spacing: -.04em; margin-bo
 .status-cell { padding: 4px 5px; background: #fff; }
 .status-controls { display: flex; align-items: center; justify-content: center; gap: 7px; }
 .status-toggle { display: inline-flex; align-items: center; gap: 4px; color: #7e918e; font-size: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.status-toggle input { appearance: none; display: grid; place-content: center; width: 12px; height: 12px; margin: 0; border: 1px solid #c6d2cf; border-radius: 3px; background: #fff; cursor: pointer; }
-.status-toggle input::before { content: ""; width: 7px; height: 7px; transform: scale(0); transition: transform .08s ease-in-out; border-radius: 1px; background: white; }
-.status-toggle input:checked { border-color: var(--teal); background: var(--teal); }.status-toggle input:checked::before { transform: scale(1); }
-.status-toggle.disabled-toggle input:checked { border-color: #93a19f; background: #93a19f; }
+.status-toggle input, .task-fixed-toggle input { appearance: auto; flex: 0 0 14px; width: 14px; height: 14px; margin: 0; accent-color: var(--teal); cursor: pointer; }
+.status-toggle input:disabled, .task-fixed-toggle input:disabled { cursor: not-allowed; }
+.status-toggle.disabled-toggle input { accent-color: #93a19f; }
+.status-toggle input:focus-visible, .task-fixed-toggle input:focus-visible { outline: 2px solid #b9ddd5; outline-offset: 2px; }
 .count-cell { padding: 4px 3px; text-align: center; }
 .hour-control { display: flex; align-items: center; justify-content: center; gap: 3px; }
 .count-input { width: 56px; height: 28px; padding: 0 4px; border: 1px solid #e5ecea; border-radius: 5px; color: #57716f; background: #fff; text-align: center; font: 700 11px "DM Sans", sans-serif; outline: none; appearance: textfield; transition: border .12s ease, background .12s ease; }
@@ -414,17 +409,16 @@ h1 { font: 800 30px/1.1 "Manrope", sans-serif; letter-spacing: -.04em; margin-bo
   .operator-stepper, .task-fixed-toggle { justify-self: end; }
   .operator-note { height: 22px; font-size: 8px; }
   .task-operator-note { max-width: none; }
-  .bench-average-products { gap: 12px; }
-  .bench-average-grid { gap: 4px 7px; }
-  .bench-average-item, .bench-average-item b { font-size: 8px; }
-  .bench-average-heading, .bench-average-heading span, .bench-average-product > strong { font-size: 8px; }
+  .bench-average-products { gap: 8px; }
+  .bench-average-value { font-size: 11px; }
+  .bench-average-heading, .bench-average-product > strong { font-size: 8px; }
   .attainment-value { font-size: 25px; }
   .task-name { font-size: 9px; }
   .stepper-button { width: 26px; height: 26px; }
   .task-count-input { width: 34px; height: 26px; }
   .task-fixed-count { font-size: 8px; }
   .task-fixed-toggle { gap: 3px; }
-  .task-fixed-toggle input { width: 13px; height: 13px; }
+  .status-toggle input, .task-fixed-toggle input { width: 14px; height: 14px; }
   .task-fixed-toggle .task-fixed-count, .task-fixed-state { font-size: 7px; }
   .metric-card { min-height: 101px; padding: 10px; }
   .metric-label { font-size: 8px; letter-spacing: .07em; }
@@ -464,7 +458,7 @@ h1 { font: 800 30px/1.1 "Manrope", sans-serif; letter-spacing: -.04em; margin-bo
   .mobile-bench-title .best-bench-badge { color: #267354; font-size: 6px; font-weight: 800; }
   .mobile-status-controls { display: flex; align-items: center; gap: 11px; }
   .mobile-status-controls .status-toggle { font-size: 9px; }
-  .mobile-status-controls .status-toggle input { width: 13px; height: 13px; }
+  .mobile-status-controls .status-toggle input { width: 14px; height: 14px; }
   .mobile-bench-card.is-best-bench { border-left: 3px solid #46a176; background: #f0f8f3; }
   .mobile-bench-card.is-best-bench .mobile-bench-title strong { color: #246d50; }
   .mobile-hours { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
