@@ -450,7 +450,7 @@
     }
     const bench = parts[1];
     if (parts[2] === "note" && NOTE_KEYS.includes(bench)) {
-      return { note: String(shift.notes?.[bench] || "").slice(0, 15) };
+      return { note: String(shift.notes?.[bench] || "") };
     }
     if (parts[2] === "status") {
       return { singleOp: !!shift.singleOp[bench], inactive: !!shift.inactive[bench] };
@@ -555,7 +555,7 @@
       }
     } else if (parts[2] === "note" && NOTE_KEYS.includes(parts[1])) {
       shift.notes ||= {};
-      shift.notes[parts[1]] = String(value.note || "").slice(0, 15);
+      shift.notes[parts[1]] = String(value.note || "");
     } else if (parts[2] === "status" && BENCHES.includes(parts[1])) {
       shift.singleOp[parts[1]] = !!value.singleOp;
       shift.inactive[parts[1]] = !!value.inactive;
@@ -754,7 +754,7 @@
   function renderTaskStaffing(shift) {
     for (const input of document.querySelectorAll("[data-note-key]")) {
       const key = input.dataset.noteKey;
-      input.value = String(shift.notes?.[key] || "").slice(0, 15);
+      input.value = String(shift.notes?.[key] || "");
       const benchOff = BENCHES.includes(key) && !!shift.inactive[key];
       const taskKey = key.startsWith("task:") ? key.slice(5) : "";
       const taskOff = VARIABLE_TASKS.includes(taskKey)
@@ -795,8 +795,8 @@
   }
 
   function operatorNoteInput(shift, key, label, disabled, className = "", hidden = false) {
-    const value = String(shift.notes?.[key] || "").slice(0, 15);
-    return `<input class="operator-note ${className}" type="text" maxlength="15" autocomplete="off" value="${safe(value)}" placeholder="Operator names" data-note-key="${safe(key)}" data-note-label="${safe(label)}" aria-label="Operator names for ${safe(label)}, up to 15 characters" title="Operator names · 15 characters maximum" ${disabled ? "disabled" : ""} ${hidden ? "hidden" : ""}>`;
+    const value = String(shift.notes?.[key] || "");
+    return `<input class="operator-note ${className}" type="text" autocomplete="off" value="${safe(value)}" placeholder="Operator names" data-note-key="${safe(key)}" data-note-label="${safe(label)}" aria-label="Operator names for ${safe(label)}" title="Operator names" ${disabled ? "disabled" : ""} ${hidden ? "hidden" : ""}>`;
   }
 
   function renderTables(shift, schedule) {
@@ -1533,8 +1533,7 @@
     const shift = activeShift();
     const key = input.dataset.noteKey;
     if (!shift || shift.finalized || !NOTE_KEYS.includes(key)) return;
-    const next = input.value.slice(0, 15);
-    if (input.value !== next) input.value = next;
+    const next = input.value;
     shift.notes ||= {};
     const previous = String(shift.notes[key] || "");
     if (previous === next) return;
