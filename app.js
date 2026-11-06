@@ -529,6 +529,30 @@
     }
   }
 
+  function confirmFutureShift(dateText, shiftName) {
+    const now = new Date();
+    const today = localDateString(now);
+    if (dateText < today) return true;
+
+    let isFuture = dateText > today;
+    if (!isFuture) {
+      const currentHour = now.getHours() + now.getMinutes() / 60;
+      const schedule = getSchedule(dateText, shiftName);
+      const ongoingNightShift = shiftName === "Nights" && currentHour < 6;
+      isFuture = !ongoingNightShift && currentHour < schedule.start;
+    }
+    if (!isFuture) return true;
+
+    const proceed = window.confirm("You are about to enter values for a future production date/shift that is not current. Are you sure?");
+    if (proceed) return true;
+
+    const currentShift = shiftForNow(today, now);
+    dateInput.value = today;
+    shiftSelect.value = currentShift;
+    chooseShift(today, currentShift);
+    return false;
+  }
+
   function readRemoteIntoLocal(row) {
     const parts = row.id.split("::");
     if (parts.length < 2) return null;
@@ -1392,6 +1416,7 @@
       }
       const existing = state.shifts[shiftId(dateText, shiftName)];
       if (!existing || !existing.finalized) {
+        if (!confirmFutureShift(dateText, shiftName)) return;
         chooseShift(dateText, shiftName);
         showToast(existing ? "Opened the saved shift in progress." : "New shift board is ready.");
         return;
@@ -1656,12 +1681,21 @@
   }
 
   function setupEvents() {
-    dateInput.addEventListener("change", () => chooseShift(dateInput.value || localDateString(), shiftSelect.value));
-    shiftSelect.addEventListener("change", () => chooseShift(dateInput.value || localDateString(), shiftSelect.value));
+    dateInput.addEventListener("change", () => {
+      const dateText = dateInput.value || localDateString();
+      const shiftName = shiftSelect.value;
+      if (confirmFutureShift(dateText, shiftName)) chooseShift(dateText, shiftName);
+    });
+    shiftSelect.addEventListener("change", () => {
+      const dateText = dateInput.value || localDateString();
+      const shiftName = shiftSelect.value;
+      if (confirmFutureShift(dateText, shiftName)) chooseShift(dateText, shiftName);
+    });
     el("historySelect").addEventListener("change", (event) => {
       const id = event.target.value;
       if (id && state.shifts[id]) {
         const shift = state.shifts[id];
+        if (!confirmFutureShift(shift.date, shift.shift)) return;
         state.currentId = id;
         saveLocal();
         render();
